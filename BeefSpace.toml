@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {DevConsole = {Path = "."}, Example = {Path = "Example"}}
+
+[Workspace]
+StartupProject = "Example"
