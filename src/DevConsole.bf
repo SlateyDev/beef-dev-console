@@ -5,6 +5,40 @@ namespace DevConsole;
 
 public class DevConsole
 {
+    public delegate Object ParserDelegate(String inputString);
+
+    private static Dictionary<Type, ParserDelegate> _parsers = new .() {
+        (
+            typeof(DateTime),
+            (ParserDelegate)new (s) => {
+                Console.WriteLine("TEST");
+                return null;
+            }
+        ),
+        /*(
+            typeof(Node),
+            (ParserDelegate)new (inputString) => _context.GetNodeOrNull(inputString)
+        ),
+        (
+            typeof(Vector2), (ParserDelegate)new (inputString) =>
+            {
+                var amounts = inputString.TrimStart('(').TrimEnd(')').Split(",").Select(val => val.Trim()).ToArray();
+                if (amounts.Length != 3) return null;
+                return new Vector3(float.Parse(amounts[0]), float.Parse(amounts[1]), float.Parse(amounts[2]));
+            }
+        ),
+        (
+            typeof(Vector3), (ParserDelegate)new (inputString) =>
+            {
+                var amounts = vectorString.TrimStart('(').TrimEnd(')').Split(",").Select(val => val.Trim()).ToArray();
+                if (amounts.Length != 2) return null;
+                return new Vector2(float.Parse(amounts[0]), float.Parse(amounts[1]));
+            }
+        )*/
+    } ~ delete _;
+
+    private const StringView CommandPattern = "(?<val>(\\([^\\)]+\\)))|\"(?<val>[^\"]+)\"|'(?<val>[^']+)'|(?<val>[^\\s]+)";
+
     private static Dictionary<String, (DevConsoleCommandAttribute attribute, System.Reflection.MethodInfo method)> commands = new .() ~ delete _;
 
     public static void GetCommands() {
