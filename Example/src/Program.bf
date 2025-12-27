@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using DevConsole;
 
 namespace Example;
@@ -14,9 +15,42 @@ class Program
         }
         obj
     }
-
+    static void PrintCommandAndArgs(String command, List<String> args) {
+        Console.WriteLine($"Command: {command}");
+        for(var arg in args) {
+            Console.WriteLine($" - {arg}");
+        }
+    }
     static int Main(String[] args) {
         DevConsole.GetCommands();
+
+        var commandName = new String();
+        defer delete commandName;
+        var commandArgs = new List<String>();
+        defer {DeleteContainerAndItems!(commandArgs);}
+
+        DevConsole.GetCommandFromString("print test", commandName, commandArgs);
+        PrintCommandAndArgs(commandName, commandArgs);
+
+        ClearAndDeleteItems!(commandArgs);
+
+        DevConsole.GetCommandFromString("hooley \"dooley\" wef", commandName, commandArgs);
+        PrintCommandAndArgs(commandName, commandArgs);
+
+        ClearAndDeleteItems!(commandArgs);
+
+        DevConsole.GetCommandFromString("hooley 'dooley' wef", commandName, commandArgs);
+        PrintCommandAndArgs(commandName, commandArgs);
+
+        ClearAndDeleteItems!(commandArgs);
+
+        DevConsole.GetCommandFromString("hooley 'do\"ol\"ey' wef", commandName, commandArgs);
+        PrintCommandAndArgs(commandName, commandArgs);
+
+        ClearAndDeleteItems!(commandArgs);
+
+        DevConsole.GetCommandFromString("hooley do\"ol\"ey wef", commandName, commandArgs);
+        PrintCommandAndArgs(commandName, commandArgs);
 
         for (var typeDecl in Type.Types)
         {
