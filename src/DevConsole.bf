@@ -3,9 +3,14 @@ using System.Collections;
 
 namespace DevConsole;
 
-public class DevConsole
-{
+public class DevConsole {
+    private static Object _context;
+
     public delegate Object ParserDelegate(String inputString);
+
+    public static void SetContext(Object context) {
+        _context = context;
+    }
 
     private static Dictionary<Type, ParserDelegate> _parsers = new .() {
         (
@@ -40,10 +45,8 @@ public class DevConsole
     private static Dictionary<String, (DevConsoleCommandAttribute attribute, System.Reflection.MethodInfo method)> commands = new .() ~ delete _;
 
     public static void GetCommands() {
-        for (var typeDecl in Type.Types)
-        {
-            if (typeDecl.HasCustomAttribute<DevConsoleCommandLibraryAttribute>())
-            {
+        for (var typeDecl in Type.Types) {
+            if (typeDecl.HasCustomAttribute<DevConsoleCommandLibraryAttribute>()) {
                 Console.WriteLine($"Found DevConsoleCommandLibrary: {typeDecl.GetFullName(.. scope .())}");
 
                 for (var method in typeDecl.GetMethods()) {
@@ -64,14 +67,15 @@ public class DevConsole
                         Console.WriteLine($"Adding method ({methodAttrib.Name}) to collection");
 
                         Console.WriteLine(GetCommandUsage(methodAttrib.Name, .. scope .()));
-                    } else {
+                    }
+                    else {
                         Console.WriteLine($"Method ({method.Name}) is not decorated as [DevConsoleCommand()]. Skipping...");
                     }
                 }
 
-                for (var field in typeDecl.GetFields(.Public | .Instance | .NonPublic | .Static)) {
+                /*for (var field in typeDecl.GetFields(.Public | .Instance | .NonPublic | .Static)) {
                     Console.WriteLine($"{field.FieldType.ToString(.. scope .())} {field.Name}");
-                }
+                }*/
             }
         }
     }
@@ -101,7 +105,8 @@ public class DevConsole
                     captureStart = input[position];
                     position++;
                     continue;
-                } else if(captureStart == input[position]) {
+                }
+                else if(captureStart == input[position]) {
                     captureStart = 0;
                     position++;
                     continue;
@@ -130,42 +135,46 @@ public class DevConsole
 
             if(index == 0) {
                 commandName.Set(val);
-            } else {
+            }
+            else {
                 args.Add(new $"{val}");
             }
             index++;
         } while(endPos < input.Length);
     }
 
-/*    public static bool RunCommand(string input)
-    {
-        if (string.IsNullOrWhiteSpace(input)) return false;
-        var command = GetCommandFromString(input);
-        if (command is null)
-        {
-            PrintError("Unknown command");
+    public static bool RunCommand(String input) {
+        if (String.IsNullOrWhiteSpace(input)) return false;
+        var commandName = new String();
+        defer delete commandName;
+        var commandArgs = new List<String>();
+        defer {
+            DeleteContainerAndItems!(commandArgs);
+        }
+
+        GetCommandFromString(input, commandName, commandArgs);
+
+        (DevConsoleCommandAttribute attribute, System.Reflection.MethodInfo method) command;
+        if(!commands.TryGetValue(commandName, out command)) {
+            Console.WriteLine("Unknown command");
             return false;
         }
         
-        if (command.Value.method.IsStatic)
-        {
-            return ExecuteCommand(null, command.Value);
+        if (command.method.IsStatic) {
+            return ExecuteCommand(null, command, commandArgs);
+        }
+        if (_context != null && _context.GetType().IsSubtypeOf(command.method.DeclaringType)) {
+            return ExecuteCommand(_context, command, commandArgs);
         }
 
-        if (command.Value.method.DeclaringType!.IsInstanceOfType(_context))
-        {
-            return ExecuteCommand(_context, command.Value);
-        }
-
-        PrintError($"Invalid context for '{command.Value.commandName}', context needs to be instance of type '{command.Value.method.DeclaringType.FullName}'");
+        Console.WriteLine($"Invalid context for '{command.attribute.Name}', context needs to be instance of type '{command.method.DeclaringType.GetFullName(.. scope .())}'");
+        //PrintError($"Invalid context for '{command.Value.commandName}', context needs to be instance of type '{command.Value.method.DeclaringType.FullName}'");
         return false;
     }
 
-    private static string GetCommandUsage(string commandName, MethodBase method)
-    {
+    /*private static string GetCommandUsage(string commandName, MethodBase method) {
         var paramUsage = _commands[commandName].attribute.Usage;
-        if (string.IsNullOrWhiteSpace(paramUsage))
-        {
+        if (string.IsNullOrWhiteSpace(paramUsage)) {
             paramUsage = string.Join(" ",
                 method.GetParameters().Select(param =>
                     $"<{(param.IsDefined(typeof(ParamArrayAttribute)) ? "params " : "")}{param}>"));
@@ -174,116 +183,93 @@ public class DevConsole
         return $"{commandName} [color=cyan]{paramUsage}[/color]";
     }
     
-    private static void PrintUsage(string commandName, MethodBase method)
-    {
+    private static void PrintUsage(string commandName, MethodBase method) {
         Print($"Usage: {GetCommandUsage(commandName, method)}");
-    }
+    }*/
 
-    private static bool ExecuteCommand(object obj, (string commandName, MethodBase method, List<object> args) command)
-    {
-        var parameters = command.method.GetParameters();
-        for (var parameterIndex = 0; parameterIndex < parameters.Length; parameterIndex++)
-        {
-            if (parameters[parameterIndex].IsDefined(typeof(ParamArrayAttribute), false))
-            {
-                var paramList = Activator.CreateInstance(typeof(List<>).MakeGenericType(parameters[parameterIndex].ParameterType.GetElementType()!));
-                for (var argIndex = parameterIndex; argIndex < command.args.Count; argIndex++)
-                {
-                    if (TryParseParameter(parameters[parameterIndex].ParameterType.GetElementType(), (string)command.args[argIndex],
-                            out var val))
-                    {
-                        paramList.GetType().GetMethod("Add").Invoke(paramList, new[] { val });
-                        // command.args[argIndex] = val;
+    private static bool ExecuteCommand(Object obj, (DevConsoleCommandAttribute attribute, System.Reflection.MethodInfo method) command, List<String> args) {
+        for (var parameterIndex = 0; parameterIndex < command.method.ParamCount; parameterIndex++) {
+            if (command.method.GetParamFlags(parameterIndex) == .Params) {
+                var paramList = command.method.GetParamType(parameterIndex).CreateObject();
+                if (paramList case .Ok) {
+                    for (var argIndex = parameterIndex; argIndex < args.Count; argIndex++) {
+                        //if (TryParseParameter(parameters[parameterIndex].ParameterType.GetElementType(), (string)command.args[argIndex], out var val)) {
+                        //    paramList.GetType().GetMethod("Add").Invoke(paramList, new[] { val });
+                            // command.args[argIndex] = val;
+                        //}
+                        //else {
+                            //PrintError($"Format Exception: Could not parse '{command.args[parameterIndex]}' as '{parameters[parameterIndex].ParameterType}'");
+                            //PrintUsage(command.commandName, command.method);
+                        //    return false;
+                        //}
                     }
-                    else
-                    {
-                        PrintError($"Format Exception: Could not parse '{command.args[parameterIndex]}' as '{parameters[parameterIndex].ParameterType}'");
-                        PrintUsage(command.commandName, command.method);
-                        return false;
-                    }
+                    //command.args = command.args.Take(parameterIndex).ToList();
+                    //command.args.Add(paramList.GetType().GetMethod("ToArray").Invoke(paramList, null));
                 }
-                command.args = command.args.Take(parameterIndex).ToList();
-                command.args.Add(paramList.GetType().GetMethod("ToArray").Invoke(paramList, null));
+                if (paramList case .Err) {
+                    Console.WriteLine("Error");
+                }
             }
-            else if (parameterIndex >= command.args.Count)
-            {
-                if (parameters[parameterIndex].IsOptional)
-                {
+            /*else if (parameterIndex >= command.args.Count) {
+                if (parameters[parameterIndex].IsOptional) {
                     command.args.Add(Type.Missing);
                 }
-                else
-                {
+                else {
                     PrintError("Not enough arguments passed");
                     PrintUsage(command.commandName, command.method);
                     return false;
                 }
             }
-            else
-            {
-                if (TryParseParameter(parameters[parameterIndex].ParameterType, (string)command.args[parameterIndex], out var val))
-                {
+            else {
+                if (TryParseParameter(command.method.GetParamType(parameterIndex), (String)args[parameterIndex], out var val)) {
                     command.args[parameterIndex] = val;
                 }
-                else
-                {
+                else {
                     PrintError($"Format Exception: Could not parse '{command.args[parameterIndex]}' as '{parameters[parameterIndex].ParameterType}'");
                     PrintUsage(command.commandName, command.method);
                     return false;
                 }
-            }
+            }*/
         }
-        try
-        {
-            command.method.Invoke(obj, command.args.ToArray());
+
+        if (command.method.Invoke(obj, args) case .Ok) {
             return true;
         }
-        catch (Exception ex)
-        {
-            PrintError(ex.Message);
-            PrintUsage(command.commandName, command.method);
+        else {
+            //PrintError(ex.Message);
+            //PrintUsage(command.commandName, command.method);
         }
 
         return false;
     }
 
-    private static bool TryParseParameter(Type parameterType, string parameterString, out object parsedValue){
-        if (parameterType == typeof(string)){
+    private static bool TryParseParameter(Type parameterType, String parameterString, out Object parsedValue){
+        if (parameterType == typeof(String)) {
             parsedValue = parameterString;
             return true;
         }
 
-        if (_parsers.ContainsKey(parameterType))
-        {
-            try{
-                parsedValue = _parsers[parameterType].Invoke(parameterString);
-                return true;
-            }
-            catch
-            {
-                parsedValue = null;
-                return false;
-                // throw new Exception($"Unable to parse parameter type: {parameterType}");
-            }
+        /*if (_parsers.ContainsKey(parameterType)) {
+            parsedValue = _parsers[parameterType].Invoke(parameterString);
+            return true;
         }
-        else
-        {
-            var parseMethod = parameterType.GetMethod("Parse", new[]{ typeof(string) });
+        else {
+            var parseMethod = parameterType.GetMethod("Parse", new[]{ typeof(String) });
 
-            if (parseMethod is not null){
-                try{
+            if (parseMethod is not null) {
+                try {
                     parsedValue = parseMethod.Invoke(null, new object[]{ parameterString });
                     return true;
                 }
-                catch
-                {
+                catch {
                     parsedValue = null;
                     return false;
                     // throw new Exception($"Unable to parse parameter type: {parameterType}");
                 }
             }
-        }
+        }*/
 
         parsedValue = null;
         return false;
-    }*/
+    }
 }

@@ -29,7 +29,14 @@ class Program
         var commandArgs = new List<String>();
         defer {DeleteContainerAndItems!(commandArgs);}
 
-        DevConsole.GetCommandFromString("print test", commandName, commandArgs);
+        var testContext = scope Blah();
+
+        DevConsole.RunCommand("print test");
+        DevConsole.SetContext(testContext);
+        DevConsole.RunCommand("change 123");
+        DevConsole.RunCommand("blah 123");
+
+        /*DevConsole.GetCommandFromString("print test", commandName, commandArgs);
         PrintCommandAndArgs(commandName, commandArgs);
 
         ClearAndDeleteItems!(commandArgs);
@@ -50,7 +57,7 @@ class Program
         ClearAndDeleteItems!(commandArgs);
 
         DevConsole.GetCommandFromString("hooley do\"ol\"ey wef", commandName, commandArgs);
-        PrintCommandAndArgs(commandName, commandArgs);
+        PrintCommandAndArgs(commandName, commandArgs);*/
 
         for (var typeDecl in Type.Types)
         {
@@ -149,6 +156,10 @@ class Program
             }
         }
     }*/
+}
+
+class Blah : MethodHolder {
+
 }
 
 [DevConsoleCommandLibrary(1337)]
