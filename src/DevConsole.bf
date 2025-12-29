@@ -188,48 +188,51 @@ public class DevConsole {
     }*/
 
     private static bool ExecuteCommand(Object obj, (DevConsoleCommandAttribute attribute, System.Reflection.MethodInfo method) command, List<String> args) {
-        for (var parameterIndex = 0; parameterIndex < command.method.ParamCount; parameterIndex++) {
+        //First we need to convert all the String params into the expected types to be sent to Invoke.
+        /*for (var parameterIndex = 0; parameterIndex < command.method.ParamCount; parameterIndex++) {
             if (command.method.GetParamFlags(parameterIndex) == .Params) {
-                var paramList = command.method.GetParamType(parameterIndex).CreateObject();
-                if (paramList case .Ok) {
-                    for (var argIndex = parameterIndex; argIndex < args.Count; argIndex++) {
-                        //if (TryParseParameter(parameters[parameterIndex].ParameterType.GetElementType(), (string)command.args[argIndex], out var val)) {
-                        //    paramList.GetType().GetMethod("Add").Invoke(paramList, new[] { val });
-                            // command.args[argIndex] = val;
-                        //}
-                        //else {
-                            //PrintError($"Format Exception: Could not parse '{command.args[parameterIndex]}' as '{parameters[parameterIndex].ParameterType}'");
-                            //PrintUsage(command.commandName, command.method);
-                        //    return false;
-                        //}
-                    }
-                    //command.args = command.args.Take(parameterIndex).ToList();
-                    //command.args.Add(paramList.GetType().GetMethod("ToArray").Invoke(paramList, null));
-                }
-                if (paramList case .Err) {
-                    Console.WriteLine("Error");
-                }
-            }
-            /*else if (parameterIndex >= command.args.Count) {
-                if (parameters[parameterIndex].IsOptional) {
-                    command.args.Add(Type.Missing);
-                }
-                else {
-                    PrintError("Not enough arguments passed");
-                    PrintUsage(command.commandName, command.method);
+                var paramType = (System.Reflection.ArrayType)command.method.GetParamType(parameterIndex);
+                var paramList = (Array)TrySilent!(paramType.CreateObject((int32)(args.Count - parameterIndex)));
+                if (paramList == null) {
+                    Console.WriteLine("ERR");
                     return false;
                 }
+                for (var argIndex = parameterIndex; argIndex < args.Count; argIndex++) {
+                    if (TryParseParameter(command.method.GetParamType(parameterIndex).BaseType, (String)args[argIndex], var val)) {
+                        //looks like i would need to do direct memory access to set a value
+                        ((uint8*)Internal.UnsafeCastToPtr(paramList))[0] = val;
+                        //paramList[argIndex - parameterIndex] = val;
+                    }
+                    else {
+                        //PrintError($"Format Exception: Could not parse '{command.args[parameterIndex]}' as '{parameters[parameterIndex].ParameterType}'");
+                        //PrintUsage(command.commandName, command.method);
+                        return false;
+                    }
+                }
+                //command.args = command.args.Take(parameterIndex).ToList();
+                //command.args.Add(paramList.GetType().GetMethod("ToArray").Invoke(paramList, null));
             }
-            else {
-                if (TryParseParameter(command.method.GetParamType(parameterIndex), (String)args[parameterIndex], out var val)) {
-                    command.args[parameterIndex] = val;
+            /*else if (parameterIndex >= args.Count) {
+                //Optional parameters. Not sure how to see this in BeefLang yet.
+                if (command.method.GetParamType(parameterIndex)) {
+                    args.Add(Type.Missing);
                 }
                 else {
-                    PrintError($"Format Exception: Could not parse '{command.args[parameterIndex]}' as '{parameters[parameterIndex].ParameterType}'");
-                    PrintUsage(command.commandName, command.method);
+                    //PrintError("Not enough arguments passed");
+                    //PrintUsage(command.commandName, command.method);
                     return false;
                 }
             }*/
+            else {
+                if (TryParseParameter(command.method.GetParamType(parameterIndex), (String)args[parameterIndex], var val)) {
+                    args[parameterIndex] = val;
+                }
+                else {
+                    //PrintError($"Format Exception: Could not parse '{command.args[parameterIndex]}' as '{parameters[parameterIndex].ParameterType}'");
+                    //PrintUsage(command.commandName, command.method);
+                    return false;
+                }
+            }
         }
 
         if (command.method.Invoke(obj, args) case .Ok) {
@@ -238,7 +241,7 @@ public class DevConsole {
         else {
             //PrintError(ex.Message);
             //PrintUsage(command.commandName, command.method);
-        }
+        }*/
 
         return false;
     }

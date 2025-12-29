@@ -184,4 +184,9 @@ class MethodHolder
         mIdentifier = newIdent;
         Console.WriteLine($"I am now number {newIdent}");
     }
+
+    [DevConsoleCommand("test1")]
+    public void MyMethod(int requiredId, String optionalName = "DefaultName") {
+
+    }
 }
